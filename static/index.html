@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Internship Watch</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23E8492B'/%3E%3Cpath d='M9 13h14v10H9z M13 13v-3h6v3' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
+  --iw-bg: oklch(98.6% 0.006 285);
+  --iw-surface: #fff;
+  --iw-panel: linear-gradient(180deg, oklch(100% 0 0), oklch(98.4% 0.008 285));
+  --iw-border: oklch(90% 0.012 285);
+  --iw-text: oklch(28% 0.03 285);
+  --iw-muted: oklch(56% 0.03 285);
+  --iw-heading: oklch(20% 0.05 285);
+  --iw-accent: oklch(52% 0.20 33);
+  --iw-accent-quiet: oklch(95% 0.04 33);
+  --iw-grad: linear-gradient(160deg, oklch(56% 0.20 33), oklch(50% 0.18 33));
+  --iw-success: oklch(50% 0.15 165);
+  --iw-warn: oklch(52% 0.16 55);
+  --iw-danger: oklch(55% 0.20 25);
+  --iw-punjab: oklch(48% 0.13 155);
+  --iw-punjab-quiet: oklch(95% 0.04 155);
+  --iw-federal: oklch(48% 0.14 255);
+  --iw-federal-quiet: oklch(95% 0.03 255);
+  --iw-news-quiet: oklch(94% 0.01 285);
+  --iw-well: linear-gradient(180deg, oklch(92.5% 0.016 285), oklch(97% 0.01 285));
+  --iw-well-shadow: inset 0 2px 4px oklch(40% 0.06 285 / 0.16), inset 0 -1px 0 oklch(100% 0 0 / 0.8);
+  --iw-panel-shadow: 0 1px 0 oklch(100% 0 0 / 0.9) inset, 0 10px 26px oklch(38% 0.08 285 / 0.12);
+  --iw-tab-active-shadow: 0 2px 0 oklch(40% 0.16 33), 0 4px 10px oklch(40% 0.16 33 / 0.38), inset 0 1px 0 oklch(100% 0 0 / 0.42);
+}
+html[data-theme="dark"] {
+  --iw-bg: oklch(20% 0.03 285);
+  --iw-surface: oklch(24% 0.032 285);
+  --iw-panel: linear-gradient(180deg, oklch(26% 0.034 285), oklch(22.5% 0.03 285));
+  --iw-border: oklch(34% 0.036 285);
+  --iw-text: oklch(92% 0.012 285);
+  --iw-muted: oklch(72% 0.024 285);
+  --iw-heading: oklch(98% 0.006 285);
+  --iw-accent: oklch(74% 0.16 33);
+  --iw-accent-quiet: oklch(31% 0.07 33);
+  --iw-grad: linear-gradient(160deg, oklch(66% 0.18 33), oklch(56% 0.17 33));
+  --iw-success: oklch(78% 0.15 165);
+  --iw-warn: oklch(82% 0.14 75);
+  --iw-danger: oklch(70% 0.17 25);
+  --iw-punjab: oklch(80% 0.13 155);
+  --iw-punjab-quiet: oklch(30% 0.05 155);
+  --iw-federal: oklch(80% 0.11 255);
+  --iw-federal-quiet: oklch(30% 0.05 255);
+  --iw-news-quiet: oklch(30% 0.02 285);
+  --iw-well: linear-gradient(180deg, oklch(18% 0.03 285), oklch(26% 0.034 285));
+  --iw-well-shadow: inset 0 2px 5px oklch(0% 0 0 / 0.45), inset 0 -1px 0 oklch(100% 0 0 / 0.06);
+  --iw-panel-shadow: 0 1px 0 oklch(100% 0 0 / 0.06) inset, 0 10px 26px oklch(0% 0 0 / 0.35);
+  --iw-tab-active-shadow: 0 2px 0 oklch(34% 0.12 33), 0 4px 12px oklch(60% 0.18 33 / 0.40), inset 0 1px 0 oklch(100% 0 0 / 0.25);
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { background: var(--iw-bg); }
+body { margin: 0; font-family: var(--font-sans); color: var(--iw-text); background: var(--iw-bg); -webkit-font-smoothing: antialiased; }
+a { color: var(--iw-accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--iw-accent); outline-offset: 2px; }
+
+.frame { width: 100%; min-height: 100vh; display: flex; }
+@media (max-width: 900px) { .frame { flex-direction: column; } }
+
+aside { width: 268px; flex: none; display: flex; flex-direction: column; background: #15141B; color: #D6D5DE; }
+html[data-theme="dark"] aside { background: #111016; }
+@media (max-width: 900px) { aside { width: 100%; } }
+.brand { padding: 18px 20px; display: flex; align-items: center; gap: 11px; border-bottom: 1px solid #2C2B36; color: inherit; }
+.brand:hover { text-decoration: none; }
+.brand-mark { width: 36px; height: 36px; flex: none; object-fit: contain; }
+.brand-name { font-size: 15px; font-weight: 600; letter-spacing: .06em; color: #fff; }
+.brand-sub { font-size: 10px; letter-spacing: .12em; color: #8C8B98; font-family: var(--font-mono); margin-top: 1px; }
+.rail-group { padding: 16px 12px 4px; }
+.rail-label { font-size: 10.5px; letter-spacing: .14em; color: #8C8B98; font-weight: 600; margin: 0 8px 8px; text-transform: uppercase; }
+.rail-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; margin-bottom: 4px;
+  border-radius: 9px; border: 1px solid #2C2B36; background: linear-gradient(180deg,#25242E,#1B1A23); color: #D6D5DE;
+  font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
+.rail-btn:hover { filter: brightness(1.12); }
+.rail-btn[aria-pressed="true"] { background: #fff; color: #16151D; font-weight: 600; border-color: #fff; }
+.rail-btn .n { font-family: var(--font-mono); font-size: 11px; padding: 1px 7px; border-radius: 999px; background: #33323D; color: #D6D5DE; }
+.rail-btn[aria-pressed="true"] .n { background: #16151D; color: #fff; }
+.rail-btn .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.rail-btn .lbl { display: flex; align-items: center; gap: 8px; }
+.src-list { list-style: none; margin: 0; padding: 0 8px 20px; font-size: 12px; }
+.src-list li { padding: 6px 4px; border-bottom: 1px solid #24232C; line-height: 1.35; }
+.src-list li:last-child { border-bottom: 0; }
+.src-list summary { display: flex; gap: 8px; cursor: pointer; list-style: none; }
+.src-list summary::-webkit-details-marker { display: none; }
+.src-list .st { width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex: none; background: #6B6A78; }
+.src-list .st.ok { background: #3DDC97; }
+.src-list .st.err { background: #F0563A; }
+.src-list .nm { color: #E6E5EE; }
+.src-list small { display: block; color: #8C8B98; font-size: 11px; }
+.src-list .pages { margin: 6px 0 2px 15px; padding: 0; list-style: none; font-family: var(--font-mono); font-size: 10.5px; color: #A9A8B4; }
+.src-list .pages li { border: 0; padding: 2px 0; overflow-wrap: anywhere; }
+.src-list .pages a { color: #C9C8D2; }
+.src-list .pages b { color: #3DDC97; font-weight: 600; }
+.src-list .pages b.bad { color: #F0563A; }
+
+main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  padding: 16px 28px; border-bottom: 1px solid var(--iw-border); }
+.topbar h1 { margin: 0; font-size: 18px; color: var(--iw-heading); }
+.topbar-nav { display: flex; align-items: center; gap: 14px; font-size: 13.5px; flex-wrap: wrap; }
+.topbar-nav a[aria-current="page"] { font-weight: 600; text-decoration: underline; }
+.icon-btn { border: 1px solid var(--iw-border); background: var(--iw-surface); color: var(--iw-text);
+  border-radius: 999px; width: 34px; height: 34px; cursor: pointer; font-size: 15px; position: relative; display: inline-grid; place-items: center; }
+.icon-btn svg { width: 17px; height: 17px; }
+.badge { position: absolute; top: -5px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  background: var(--iw-accent); color: #fff; font-size: 10.5px; font-weight: 700; display: grid; place-items: center; font-family: var(--font-mono); }
+
+.body { padding: 22px 28px 80px; display: flex; flex-direction: column; gap: 18px; max-width: 1120px; }
+.card { background: var(--iw-panel); border: 1px solid var(--iw-border); border-radius: 14px; box-shadow: var(--iw-panel-shadow); padding: 18px 20px; }
+.head { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; justify-content: space-between; }
+.head h2 { margin: 0 0 4px; font-size: 20px; color: var(--iw-heading); }
+.head p { margin: 0; font-size: 13px; color: var(--iw-muted); line-height: 1.5; max-width: 640px; }
+.worker { margin-top: 10px; font-family: var(--font-mono); font-size: 12px; color: var(--iw-muted); display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: center; }
+.worker b { color: var(--iw-heading); font-weight: 600; }
+.pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--iw-success); display: inline-block; margin-right: 6px; }
+.pulse.off { background: var(--iw-danger); }
+.pulse.busy { background: var(--iw-warn); animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .pulse.busy { animation: none; } }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { border: none; background: var(--iw-grad); color: #fff; font-weight: 600; font-size: 13px; padding: 9px 16px; border-radius: 999px;
+  cursor: pointer; box-shadow: var(--iw-tab-active-shadow); font-family: inherit; }
+.btn.ghost { background: var(--iw-surface); color: var(--iw-text); border: 1px solid var(--iw-border); box-shadow: none; }
+.btn.ghost[aria-pressed="true"] { border-color: var(--iw-success); color: var(--iw-success); }
+.btn.small { padding: 6px 12px; font-size: 12px; }
+.btn:disabled { opacity: .55; cursor: default; }
+.tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.tools input[type=search] { flex: 1; min-width: 220px; background: var(--iw-well); box-shadow: var(--iw-well-shadow);
+  border: 1px solid var(--iw-border); border-radius: 999px; padding: 9px 16px; color: var(--iw-text); font: inherit; font-size: 13.5px; }
+.tools label { font-size: 12.5px; color: var(--iw-muted); display: flex; gap: 6px; align-items: center; }
+.note { font-size: 12.5px; color: var(--iw-muted); line-height: 1.5; }
+
+.list { display: flex; flex-direction: column; gap: 10px; }
+.item { background: var(--iw-panel); border: 1px solid var(--iw-border); border-radius: 12px; padding: 14px 16px;
+  display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; }
+.item.fresh { border-color: var(--iw-accent); box-shadow: 0 0 0 1px var(--iw-accent) inset; }
+.item h3 { margin: 0; font-size: 15px; line-height: 1.35; color: var(--iw-heading); font-weight: 600; }
+.item h3 a { color: inherit; }
+.item .meta { font-size: 12.5px; color: var(--iw-muted); display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-top: 4px; }
+.item .detail { grid-column: 1 / -1; font-size: 12.5px; color: var(--iw-text); line-height: 1.5; overflow-wrap: anywhere; }
+.item .proof { grid-column: 1 / -1; font-size: 11.5px; color: var(--iw-muted); font-family: var(--font-mono); overflow-wrap: anywhere; }
+.item .proof a { color: var(--iw-muted); text-decoration: underline; }
+.item .when { text-align: right; font-size: 12px; color: var(--iw-muted); white-space: nowrap; }
+.deadline { font-weight: 600; color: var(--iw-warn); }
+.chip { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; letter-spacing: .02em; }
+.chip.Punjab { background: var(--iw-punjab-quiet); color: var(--iw-punjab); }
+.chip.Federal { background: var(--iw-federal-quiet); color: var(--iw-federal); }
+.chip.News, .chip.kind, .chip.Test { background: var(--iw-news-quiet); color: var(--iw-muted); }
+.chip.new { background: var(--iw-grad); color: #fff; }
+.chip.old { background: transparent; color: var(--iw-muted); border: 1px dashed var(--iw-border); font-weight: 500; }
+.empty { padding: 30px; text-align: center; color: var(--iw-muted); font-size: 13.5px; border: 1px dashed var(--iw-border); border-radius: 12px; }
+
+/* Panels that slide over the page: the inbox and notification settings. */
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 100%); background: var(--iw-surface); border-left: 1px solid var(--iw-border);
+  box-shadow: -10px 0 30px oklch(0% 0 0 / .25); z-index: 40; display: flex; flex-direction: column; }
+.drawer header { display: flex; justify-content: space-between; align-items: center; padding: 16px 18px; border-bottom: 1px solid var(--iw-border); gap: 10px; }
+.drawer h2 { margin: 0; font-size: 16px; color: var(--iw-heading); }
+.drawer .scroll { overflow: auto; padding: 14px 18px 40px; display: flex; flex-direction: column; gap: 12px; }
+.close { border: 0; background: transparent; color: var(--iw-muted); font-size: 20px; cursor: pointer; }
+.note-row { border: 1px solid var(--iw-border); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; }
+.note-row.unread { border-color: var(--iw-accent); }
+.note-row b { color: var(--iw-heading); font-size: 13px; }
+.note-row pre { white-space: pre-wrap; font: inherit; margin: 6px 0; color: var(--iw-text); max-height: 180px; overflow: auto; }
+.deliv { display: flex; flex-wrap: wrap; gap: 6px; }
+.deliv span { font-size: 11px; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--iw-border); }
+.deliv .ok { color: var(--iw-success); border-color: var(--iw-success); }
+.deliv .bad { color: var(--iw-danger); border-color: var(--iw-danger); }
+.chan { border: 1px solid var(--iw-border); border-radius: 12px; padding: 12px 14px; }
+.chan h3 { margin: 0 0 2px; font-size: 14px; color: var(--iw-heading); display: flex; justify-content: space-between; align-items: center; }
+.chan p { margin: 0 0 10px; font-size: 12px; color: var(--iw-muted); line-height: 1.45; }
+.chan .on { font-size: 11px; color: var(--iw-success); font-weight: 600; }
+.chan .offl { font-size: 11px; color: var(--iw-muted); }
+.chan label { display: block; font-size: 11px; font-weight: 600; color: var(--iw-muted); text-transform: uppercase; letter-spacing: .04em; margin: 8px 0 4px; }
+.chan input { width: 100%; background: var(--iw-well); box-shadow: var(--iw-well-shadow); border: 1px solid var(--iw-border);
+  border-radius: 8px; padding: 8px 10px; color: var(--iw-text); font: inherit; font-size: 13px; }
+.chan .row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+.chan .msg { font-size: 12px; }
+.msg.ok { color: var(--iw-success); } .msg.err { color: var(--iw-danger); }
+#channelList { display: flex; flex-direction: column; gap: 12px; }
+.runs { width: 100%; border-collapse: collapse; font-size: 12px; font-family: var(--font-mono); }
+.runs th { text-align: left; color: var(--iw-muted); font-weight: 600; padding: 5px 6px; border-bottom: 1px solid var(--iw-border); font-family: var(--font-sans); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.runs td { padding: 5px 6px; border-bottom: 1px solid var(--iw-border); }
+.toast { position: fixed; right: 24px; bottom: 96px; max-width: 380px; background: var(--iw-surface); color: var(--iw-text);
+  border: 1px solid var(--iw-accent); border-radius: 12px; padding: 12px 14px; box-shadow: var(--iw-panel-shadow); font-size: 13px; z-index: 50; }
+.toast b { color: var(--iw-accent); }
+@media (max-width: 640px) { .body, .topbar { padding-left: 16px; padding-right: 16px; } .item { grid-template-columns: 1fr; } .item .when { text-align: left; } }
+</style>
+</head>
+<body>
+<div class="frame">
+  <aside>
+    <a class="brand" href="./">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#E8492B"/>
+        <path d="M9 13h14v10H9z M13 13v-3h6v3" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/></svg>
+      <div>
+        <div class="brand-name">INTERNSHIP WATCH</div>
+        <div class="brand-sub">PUNJAB · FEDERAL</div>
+      </div>
+    </a>
+        <div class="rail-group">
+      <div class="rail-label">Government</div>
+      <div id="levelFilters"></div>
+    </div>
+    <div class="rail-group">
+      <div class="rail-label">Kind</div>
+      <div id="kindFilters"></div>
+    </div>
+    <div class="rail-group">
+      <div class="rail-label">Sources (click for what was fetched)</div>
+      <ul class="src-list" id="sources"><li>Loading…</li></ul>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <h1>Internships and jobs</h1>
+      <div class="topbar-nav">
+        <button class="btn ghost small" id="openSettings" type="button">Settings</button>
+        <button class="icon-btn" id="bell" aria-label="Notifications" title="Notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="badge" id="bellCount" hidden>0</span>
+        </button>
+        <button class="icon-btn" id="theme-btn" aria-label="Toggle theme">&#9788;</button>
+      </div>
+    </div>
+
+    <div class="body">
+      <section class="card head">
+        <div>
+          <h2>Punjab and federal internships, and government jobs</h2>
+          <p>Scraped from the government websites on the left by a background worker, on a timer. Each post links to
+            the page it came from; only what is still open is shown. A new one goes to the bell, to your desktop, and to
+            any email, Telegram or webhook you set up. Government jobs are under "Government jobs" on the left.</p>
+          <div class="worker" id="worker">Loading…</div>
+        </div>
+        <div class="actions">
+          <button class="btn" id="checkNow">Check now</button>
+          <button class="btn ghost" id="alertsBtn" aria-pressed="false">Desktop alerts: off</button>
+          <button class="btn ghost" id="openChannels">Notification channels</button>
+        </div>
+      </section>
+
+      <div class="tools">
+        <input type="search" id="find" placeholder="Filter by title, department or source" aria-label="Filter internships and jobs">
+        <label><input type="checkbox" id="onlyNew"> New since my last visit only</label>
+      </div>
+      <div class="note" id="channelNote"></div>
+      <div class="note" id="closedNote"></div>
+
+      <div class="list" id="list"></div>
+
+      <section class="card">
+        <h2 style="margin:0 0 8px; font-size:15px; color:var(--iw-heading)">Worker log: the last checks</h2>
+        <table class="runs"><thead><tr><th>Started</th><th>How</th><th>Sources read</th><th>Failed</th><th>Items seen</th><th>New</th><th>Took</th></tr></thead>
+          <tbody id="runs"></tbody></table>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div class="drawer" id="inbox" hidden role="dialog" aria-label="Notifications">
+  <header><h2>Notifications</h2>
+    <div class="actions"><button class="btn ghost small" id="markRead">Mark all read</button>
+      <button class="close" data-close aria-label="Close">×</button></div></header>
+  <div class="scroll" id="inboxList"></div>
+</div>
+
+<div class="drawer" id="channels" hidden role="dialog" aria-label="Settings and notification channels">
+  <header><h2>Settings and notifications</h2><button class="close" data-close aria-label="Close">×</button></header>
+  <div class="scroll">
+    <form class="chan" id="scheduleForm">
+      <h3>How often to check</h3>
+      <p>The background worker reads every source on this timer. Government sites are slow to change; 30 minutes is plenty.</p>
+      <label for="refreshMinutes">Check every (minutes, 5 to 1440)</label>
+      <input id="refreshMinutes" name="refresh_minutes" type="number" min="5" max="1440" step="5">
+      <div class="row"><button class="btn small" type="submit">Save</button><span class="msg" aria-live="polite"></span></div>
+    </form>
+    <div id="channelList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
