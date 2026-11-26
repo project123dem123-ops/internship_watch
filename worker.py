@@ -46,9 +46,11 @@ class Worker:
         ok = failed = found = 0
         fresh = []
         error = None
+        # One fetcher for the whole check: a page two sources read is fetched once.
+        get = src.CycleCache(self.get)
         try:
             with ThreadPoolExecutor(max_workers=6) as pool:
-                results = list(pool.map(lambda s: (s, src.check(s, self.get)), self.sources))
+                results = list(pool.map(lambda s: (s, src.check(s, get)), self.sources))
             for source, result in results:
                 if result["error"]:
                     failed += 1
@@ -56,7 +58,7 @@ class Worker:
                     ok += 1
                     found += len(result["items"])
                 try:
-                    fresh.extend(store.record(source, result, enrich=lambda item: src.enrich(item, self.get)))
+                    fresh.extend(store.record(source, result, enrich=lambda item: src.enrich(item, get)))
                 except Exception as exc:  # noqa: BLE001 -- one source must not lose the others
                     logger.exception("Could not record %s", source["id"])
                     error = f"{source['id']}: {exc}"

@@ -1,7 +1,8 @@
 @echo off
 rem Runs the Internship Watch on its own, without Docker:
 rem   installs its Python packages (first run), starts the app and its
-rem   background worker on http://127.0.0.1:8700/, and opens the browser.
+rem   background worker on http://127.0.0.1:8700/ (or INTERNSHIPS_PORT from
+rem   .env), and opens the browser.
 rem Data is kept in the "data" folder next to this file.
 rem
 rem   start.bat --no-browser     start without opening the browser
@@ -25,7 +26,8 @@ if exist .env (
   for /f "usebackq eol=# tokens=1,* delims==" %%a in (".env") do if not "%%b"=="" set "%%a=%%b"
 )
 if "%INTERNSHIPS_HOST%"=="" set INTERNSHIPS_HOST=127.0.0.1
+if "%INTERNSHIPS_PORT%"=="" set INTERNSHIPS_PORT=8700
 
-echo Internship Watch: http://127.0.0.1:8700/
-if /i not "%~1"=="--no-browser" start "" cmd /c "timeout /t 3 >nul & start http://127.0.0.1:8700/"
+echo Internship Watch: http://127.0.0.1:%INTERNSHIPS_PORT%/
+if /i not "%~1"=="--no-browser" start "" cmd /c "timeout /t 3 >nul & start http://127.0.0.1:%INTERNSHIPS_PORT%/"
 python serve.py

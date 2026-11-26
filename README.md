@@ -23,16 +23,21 @@ Data is kept in `data/` (in Docker, the `internship-data` volume).
 |---|---|---|
 | Punjab | Punjab Jobs Portal (jobs.punjab.gov.pk) | every row of the jobs table naming an internship; each new post's page is read for its posting date and last date to apply |
 | Punjab | PITB news and press releases | links naming an internship |
-| Punjab | CM IT Internship (punjab.gov.pk, cmitinterns.punjab.gov.pk), CM Climate Leadership Internship (EPD), CM Tourism Internship (mpip) | the programme page's text: a new line (new cohort, registration open, deadline) is reported as an update |
+| Punjab | CM IT Internship (punjab.gov.pk, cmitinterns.punjab.gov.pk), CM Climate Leadership Internship (EPD), CM Tourism Internship (mpip), Punjab Safe Cities Authority internship (psca.gop.pk) | the programme page's text: a new line (new cohort, registration open, deadline) is reported as an update |
+| Punjab | DGPR Punjab, the government's press office (dgpr.punjab.gov.pk) | links on its front page naming an internship |
 | Federal | National Jobs Portal (njp.gov.pk) | its searches for "intern", "internship", "internee" and its Internship grade; each new post's page is read for its dates and vacancies |
 | Federal | PKCERT, NAVTTC | links naming an internship |
 | Federal | PSEB ICT Internship Program, PKCERT internship page | page text, as above |
+| Federal | State Bank of Pakistan careers (sbp.org.pk/careers) | links naming an internship or one of its paid training schemes (SBOTS, EATS, SOTS) |
+| Newspaper ads | jobz.pk's government internships, collected from Jang, Express, Dawn and other papers | each row naming an internship in Punjab (by its title, employer or city) or a federal body; another province's ads are left out. Each ad's page is read for its "Expected Last Date"; **only ads whose last date has not passed are kept** |
 | News | Bing News, and the search feeds of ProPakistani, Pakistan Observer, TechJuice, Daily Times and APP | stories about Punjab or federal internships (India's Punjab, other provinces and other countries are left out). Each story's article is read for its last date to apply; **only stories whose last date has not passed are kept**, linked to the article itself |
 | Punjab jobs | Punjab Jobs Portal: all jobs | every row of the jobs table that is *not* an internship, with its last date |
 | Federal jobs | National Jobs Portal: all jobs (njp.gov.pk/jobs/search) | every card that is not an internship: employer, grade, places, last date ("Available till", "5 days left") |
 
 The list is `SOURCES` in `sources.py`. The first check of a source records
 what is already there without announcing it; only later additions are "new".
+Within one check, a page that two sources read (the Punjab portal for its
+internships and its jobs) is fetched once.
 
 Only what is still open is listed: an internship or job whose last date has
 passed is kept in the database but hidden (the page says how many), and a
@@ -79,7 +84,7 @@ localhost. On a plain http server address use the bell or a channel.
 |---|---|---|
 | `INTERNSHIPS_DATA_DIR` | `./data` (`/data` in the image) | the SQLite database |
 | `INTERNSHIPS_HOST` | 0.0.0.0 | `start.bat` uses 127.0.0.1 (this PC only) |
-| `INTERNSHIPS_PORT` | 8700 | |
+| `INTERNSHIPS_PORT` | 8700 | the port on this PC, for `start.bat` and `docker compose`; e.g. 8710 when the NAIIH Marketplace's copy has 8700 |
 | `INTERNSHIPS_PUBLIC_URL` | | the app's address, for links in messages |
 | `INTERNSHIP_REFRESH_MINUTES` | 30 | how often the worker checks; can be changed on the page |
 | `INTERNSHIPS_WORKER` | on | `off` serves the page without the worker |

@@ -28,7 +28,7 @@ class ApiTest(TempDB):
 
     def test_status_lists_every_source(self):
         body = self.client.get(B + "/api/status").json()
-        self.assertEqual(len(body["sources"]), 14)
+        self.assertEqual(len(body["sources"]), 18)
         self.assertIn("worker", body)
 
     def test_only_what_is_still_open_is_listed(self):

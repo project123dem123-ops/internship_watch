@@ -1,5 +1,8 @@
 """Reading each kind of page. Fixtures copy the real sites' markup (16 Nov 2026)."""
+import threading
+import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timezone
 from unittest import mock
 
@@ -41,6 +44,42 @@ PUNJAB_DETAIL = ("<div>Job Details Division Lahore District LAHORE Domicile Only
                  "Posted 16-11-2026 Level Not Applicable Last Date to Apply 30-11-2026 Preferred Candidates</div>")
 NJP_DETAIL = ("<div>Deadline 29 Nov 2026 13 days left Quick Overview Posted: 15 Nov 2026 Deadline: 29 Nov 2026 "
               "Vacancies: 15 Experience: none</div>")
+
+
+def _jobz_row(slug, title, employer, city, posted, positions):
+    return f"""<div class="row_container">
+  <div class="cell1"><a href="https://www.jobz.pk/{slug}"  target="_blank">{title}</a></div>
+  <div class="cell2"><a href="https://www.jobz.pk/x-vacancies/" title="{employer} jobs">{employer}</a></div>
+  <div class="cell_three">
+    <div class="inner_cell"><a href="https://www.jobz.pk/jobs_in_x/" title="jobs in {city}">{city}</a></div>
+    <div class="inner_cell">{posted}<br><a href="https://www.jobz.pk/x-employment/">Management</a></div>
+  </div>
+  <div class="cell1" style="width:100%"><br>Vacant Positions: <a href="https://www.jobz.pk/x-jobs/">{positions}</a></div>
+</div>"""
+
+
+# jobz.pk's government internships list, as it words its rows (26 Nov 2026).
+JOBZ_LIST = ('<div class="row_container"><div class="cell1">Vacancy</div><div class="inner_cell">Job City</div></div>' +
+             "".join(_jobz_row(*row) for row in [
+                 ("cbd-punjab-internship-2026_jobs-780001.html", "Central Business District CBD Punjab Internship 2026",
+                  "Punjab Central Business District Development Authority", "Lahore", "25-Sep-2026", "Internee"),
+                 ("balochistan-safe-cities-authority-bsca-internship-2026_jobs-779000.html",
+                  "Balochistan Safe Cities Authority BSCA Internship 2026", "Balochistan Safe Cities Authority PSCA",
+                  "Quetta", "13-Oct-2026", "Internship"),
+                 ("special-education-department-sed-punjab-jobs-2026_jobs-779500.html",
+                  "Special Education Department SED Punjab Jobs 2026", "Special Education Department", "Jhang",
+                  "13-Oct-2026", "Junior Special Education Teacher"),
+                 ("sngpl-apprenticeship-training-course-2026_jobs-785582.html", "SNGPL Apprenticeship Training Course 2026",
+                  "Sui Northern Gas Pipelines Limited SNGPL", "Gujranwala", "30-Oct-2026", "Electrician"),
+                 ("ministry-of-law-justice-islamabad-internship-2026_jobs-770100.html",
+                  "Ministry of Law &amp; Justice Islamabad Internship 2026", "Ministry of Law &amp; Justice", "Islamabad",
+                  "31-Jul-2026", "Internship"),
+                 ("sbp-internship-program-2026_jobs-781000.html", "State Bank of Pakistan Internship Program 2026",
+                  "State Bank of Pakistan", "Karachi", "02-Oct-2026", "Internee"),
+             ]))
+# An ad's own page.
+JOBZ_AD = ("<div>Job Type: Intern Expected Last Date: {} or as per paper ad Published on: 03-NOV-2014 "
+           "Date Posted / Updated: 25 September, 2026 Newspaper: Jang Jobs</div>")
 
 
 class Fake:
@@ -184,6 +223,74 @@ class ReadingTest(unittest.TestCase):
                           Fake({"https://www.njp.gov.pk/jobs/1": NJP_DETAIL}))
         self.assertEqual((item["deadline"], item["posted"]), ("29 Nov 2026", "15 Nov 2026"))
         self.assertIn("15 place(s)", item["detail"])
+
+    def test_a_sources_own_words_count_as_internships(self):
+        html = ('<a href="/careers/sbots-29th-batch">State Banks Officers Training Scheme (SBOTS)</a>'
+                '<a href="/careers/it-operations-on-contract">Information Technology Operations Department</a>')
+        self.assertEqual(src.read_links(html, "https://www.sbp.org.pk/careers/"), [])
+        items = src.read_links(html, "https://www.sbp.org.pk/careers/", src.SOURCE_BY_ID["sbp"]["words"])
+        self.assertEqual([i["url"] for i in items], ["https://www.sbp.org.pk/careers/sbots-29th-batch"])
+
+    def test_newspaper_ads_are_kept_to_punjab_and_federal_internships(self):
+        items = src.read_jobz(JOBZ_LIST, "https://www.jobz.pk/government-internships/")
+        self.assertEqual([(i["title"], i["level"]) for i in items], [
+            ("Central Business District CBD Punjab Internship 2026", "Punjab"),
+            ("SNGPL Apprenticeship Training Course 2026", "Punjab"),          # by its city alone
+            ("Ministry of Law & Justice Islamabad Internship 2026", "Federal"),
+            ("State Bank of Pakistan Internship Program 2026", "Federal"),   # a federal body in Karachi
+        ])
+        self.assertEqual(items[0]["posted"], "25-Sep-2026")
+        self.assertEqual(items[0]["detail"], "Punjab Central Business District Development Authority · Lahore")
+        self.assertTrue(all(i["_read"] for i in items))
+
+    def test_newspaper_ads_are_kept_only_while_their_last_date_is_ahead(self):
+        ads_read = mock.patch.dict(src._AD_PAGES, clear=True)
+        ads_read.start()
+        self.addCleanup(ads_read.stop)
+        base = "https://www.jobz.pk/"
+        fake = Refusing({base + "government-internships/": JOBZ_LIST,
+                         base + "cbd-punjab-internship-2026_jobs-780001.html": JOBZ_AD.format("10 December, 2026"),
+                         base + "sngpl-apprenticeship-training-course-2026_jobs-785582.html": JOBZ_AD.format("13 November, 2026"),
+                         base + "ministry-of-law-justice-islamabad-internship-2026_jobs-770100.html": "<p>No date given</p>"},
+                        {base + "sbp-internship-program-2026_jobs-781000.html": 503})
+        result = src.check(src.SOURCE_BY_ID["jobz"], fake)
+        self.assertIsNone(result["error"])
+        self.assertEqual([(i["title"], i["deadline"]) for i in result["items"]],
+                         [("Central Business District CBD Punjab Internship 2026", "10 Dec 2026")])
+        self.assertEqual([p.get("status") for p in result["pages"]], [200, 200, 200, 200, 503])
+        # A second check reads only the ad that could not be read, and the list.
+        fake.asked.clear()
+        src.check(src.SOURCE_BY_ID["jobz"], fake)
+        self.assertEqual(fake.asked, [base + "government-internships/",
+                                      base + "sbp-internship-program-2026_jobs-781000.html"])
+        # Its page was read for its last date already: storing it reads nothing more.
+        fake.asked.clear()
+        src.enrich(result["items"][0], fake)
+        self.assertEqual(fake.asked, [])
+
+    def test_a_page_two_sources_read_is_fetched_once_per_check(self):
+        calls = []
+        lock = threading.Lock()
+
+        def slow(url):          # slow enough that the other three ask while it is fetching
+            with lock:
+                calls.append(url)
+            time.sleep(0.1)
+            if url.endswith("down"):
+                raise ConnectionError("refused")
+            return src.Fetched(url, 200, "<p>page</p>")
+
+        cache = src.CycleCache(slow)
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            pages = list(pool.map(cache, ["https://a.gov.pk/"] * 4))
+        self.assertEqual(calls, ["https://a.gov.pk/"])
+        self.assertTrue(all(p is pages[0] for p in pages))
+        for _ in range(2):
+            with self.assertRaises(ConnectionError):
+                cache("https://a.gov.pk/down")
+        self.assertEqual(calls, ["https://a.gov.pk/", "https://a.gov.pk/down"])
+        self.assertFalse(cache.live)                       # a fake: no pauses between requests
+        self.assertTrue(src.CycleCache().live)
 
     def test_check_records_every_address_fetched(self):
         source = {"id": "x", "name": "X", "level": "Federal", "kind": "links", "home": "https://a.gov.pk/",

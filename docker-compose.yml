@@ -1,6 +1,7 @@
 # The Internship Watch:
 #
 #   docker compose up -d --build        then open http://127.0.0.1:8700/
+#                                       (or the INTERNSHIPS_PORT set in .env)
 #
 # Notification channels can be set on the page (Settings), or here through a
 # .env file next to this one (see .env.example).
@@ -14,10 +15,13 @@ services:
         required: false
     environment:
       INTERNSHIPS_DATA_DIR: /data
+      # Always 8700 inside the container; INTERNSHIPS_PORT in .env picks the
+      # port on this PC (below), e.g. 8710 when another copy already has 8700.
+      INTERNSHIPS_PORT: "8700"
     volumes:
       - internship-data:/data
     ports:
-      - "127.0.0.1:8700:8700"
+      - "127.0.0.1:${INTERNSHIPS_PORT:-8700}:8700"
 
 volumes:
   internship-data:

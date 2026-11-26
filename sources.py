@@ -1,6 +1,6 @@
 """Where internships are published, and how each kind of page is read.
 
-Four kinds of source:
+Five kinds of source:
 
   posts    a page that lists openings (a jobs portal, a press-release list).
            Each internship link is one item; a link not seen before is new.
@@ -12,13 +12,18 @@ Four kinds of source:
            and kept only when the article gives a last date not yet passed.
   jobs     the government jobs on the two portals that are not internships,
            in a list of their own.
+  ads      newspaper job ads collected by jobz.pk: its government internships
+           in Punjab or federal bodies, each kept only while the last date
+           its own page gives has not passed.
 
 Every item keeps the address it was found on, and a new post's own page is
 read for its posting date and last date to apply, so what the portal shows
 can be checked against the website it came from.
 """
 import re
+import threading
 import time
+from concurrent.futures import Future
 from datetime import datetime, timedelta, timezone
 from html import unescape
 from urllib.parse import parse_qs, quote, urljoin, urlparse
@@ -64,6 +69,14 @@ SOURCES = [
     {"id": "tourism", "name": "CM Tourism Internship Program", "level": "Punjab", "kind": "page",
      "home": "https://mpip.punjab.gov.pk/",
      "urls": ["https://mpip.punjab.gov.pk/"]},
+    # The Punjab government's press office: its front page carries programme
+    # announcements (it posted the CM Tourism Internship). Its news pages are years old.
+    {"id": "dgpr", "name": "DGPR Punjab (press office)", "level": "Punjab", "kind": "links",
+     "home": "https://dgpr.punjab.gov.pk/",
+     "urls": ["https://dgpr.punjab.gov.pk/"]},
+    {"id": "psca", "name": "Punjab Safe Cities Authority internship", "level": "Punjab", "kind": "page",
+     "home": "https://psca.gop.pk/apply-for-internship/",
+     "urls": ["https://psca.gop.pk/apply-for-internship/"]},
     # ---- Federal ----------------------------------------------------------
     {"id": "njp", "name": "National Jobs Portal", "level": "Federal", "kind": "njp",
      "home": "https://www.njp.gov.pk/jobs/search?q=internship",
@@ -84,6 +97,11 @@ SOURCES = [
     {"id": "navttc", "name": "NAVTTC news", "level": "Federal", "kind": "links",
      "home": "https://navttc.gov.pk/news/",
      "urls": ["https://navttc.gov.pk/news/", "https://navttc.gov.pk/"]},
+    # The State Bank's paid trainee schemes (SBOTS, EATS, SOTS) work like internships.
+    {"id": "sbp", "name": "State Bank of Pakistan training schemes", "level": "Federal", "kind": "links",
+     "home": "https://www.sbp.org.pk/careers/",
+     "urls": ["https://www.sbp.org.pk/careers/"],
+     "words": r"\b(training\s+schemes?|trainees?|young\s+graduates?)\b"},
     # ---- Press coverage ---------------------------------------------------
     # Only stories whose article states a last date that has not passed are
     # kept. Every feed here links to the article itself: Google News was
@@ -100,6 +118,11 @@ SOURCES = [
                ("TechJuice", "https://www.techjuice.pk/?s=internship&feed=rss2"),
                ("Daily Times", "https://dailytimes.com.pk/?s=internship&feed=rss2"),
                ("APP", "https://www.app.com.pk/?s=internship&feed=rss2")]},
+    # Newspaper ads (Jang, Express, Dawn...) that never reach the portals, as
+    # jobz.pk collects them. Each item is tagged Punjab or Federal itself.
+    {"id": "jobz", "name": "Newspaper ads (jobz.pk government internships)", "level": "Punjab / Federal",
+     "kind": "ads", "home": "https://www.jobz.pk/government-internships/",
+     "urls": ["https://www.jobz.pk/government-internships/"]},
     # ---- Government jobs (everything on the two portals that is not an internship)
     {"id": "punjab-gov-jobs", "name": "Punjab Jobs Portal: all jobs", "level": "Punjab", "kind": "punjab_jobs",
      "jobs": True, "home": "https://jobs.punjab.gov.pk/new_recruit/jobs",
@@ -152,17 +175,62 @@ class Fetched:
         self.url, self.status, self.text = url, status, text
 
 
+_local = threading.local()
+
+
+def _session():
+    """One connection pool per thread: a site's second page reuses the first's
+    connection. (A requests Session is not shared between threads.)"""
+    if not hasattr(_local, "session"):
+        _local.session = requests.Session()
+        _local.session.headers.update(HEADERS)
+    return _local.session
+
+
 def fetch(url):
     """The page. Several government sites have certificate chains that fail
     verification; those are retried unverified rather than skipped -- this
     only reads public pages, it sends nothing."""
+    session = _session()
     try:
-        response = requests.get(url, headers=HEADERS, timeout=config.TIMEOUT)
+        response = session.get(url, timeout=config.TIMEOUT)
     except requests.exceptions.SSLError:
-        response = requests.get(url, headers=HEADERS, timeout=config.TIMEOUT, verify=False)
+        response = session.get(url, timeout=config.TIMEOUT, verify=False)
     response.raise_for_status()
     response.encoding = response.encoding or "utf-8"
     return Fetched(response.url, response.status_code, response.text)
+
+
+class CycleCache:
+    """A fetcher for one check of every source: a page that two sources read
+    (the Punjab portal's internships and its jobs, PKCERT's links and its
+    text) is fetched once, even when both ask at the same moment. A failure
+    is shared too; the next check asks again."""
+
+    def __init__(self, get=None):
+        self.get = get or fetch
+        self.live = live(self.get)
+        self._lock = threading.Lock()
+        self._pages = {}
+
+    def __call__(self, url):
+        with self._lock:
+            pending = self._pages.get(url)
+            mine = pending is None
+            if mine:
+                pending = self._pages[url] = Future()
+        if mine:
+            try:
+                pending.set_result(self.get(url))
+            except BaseException as exc:  # noqa: BLE001 -- handed to every caller of this page
+                pending.set_exception(exc)
+        return pending.result()
+
+
+def live(get):
+    """Whether `get` reaches the real websites (not a test's fake), so pauses
+    between requests to one site are kept."""
+    return get is fetch or getattr(get, "live", False)
 
 
 # ---------------------------------------------------------------------------
@@ -269,8 +337,11 @@ def read_njp(html, base, filtered=False, jobs=False):
     return items
 
 
-def read_links(html, base):
-    """Links whose text (or address) names an internship."""
+def read_links(html, base, words=None):
+    """Links whose text (or address) names an internship -- or matches the
+    source's own `words`, for a body whose paid trainee schemes go by another
+    name (the State Bank's "Officers Training Scheme")."""
+    extra = re.compile(words, re.I) if words else None
     items, seen = [], set()
     for href, inner in re.findall(r'<a\b[^>]*href="([^"#][^"]*)"[^>]*>(.*?)</a>', strip_code(html),
                                   flags=re.S | re.I):
@@ -278,7 +349,8 @@ def read_links(html, base):
             continue
         url = urljoin(base, unescape(href))
         title = text_of(inner) or slug_words(url).strip().capitalize()
-        if not is_internship(title + " " + slug_words(url)) or url in seen or len(title) < 6:
+        named = title + " " + slug_words(url)
+        if not (is_internship(named) or (extra and extra.search(named))) or url in seen or len(title) < 6:
             continue
         seen.add(url)
         items.append({"kind": "post", "title": title[:200], "url": url, "detail": "", "deadline": ""})
@@ -495,6 +567,8 @@ def enrich(item, get=None):
     get = get or fetch
     if item.get("kind") not in ("post", "job") or not item.get("url") or not urlparse(item["url"]).scheme.startswith("http"):
         return item
+    if item.get("_read"):   # its page was read while checking the source (newspaper ads)
+        return item
     try:
         found = details(get(item["url"]).text)
     except Exception:  # noqa: BLE001 -- the listing is still the post; its page is extra
@@ -507,6 +581,75 @@ def enrich(item, get=None):
     if extra:
         item["detail"] = " · ".join(x for x in (item.get("detail"), extra) if x)
     return item
+
+
+# ---------------------------------------------------------------------------
+# Newspaper ads, as collected by jobz.pk
+# ---------------------------------------------------------------------------
+
+# Every district of Punjab: an ad's city is often its only sign of the province.
+PUNJAB_DISTRICTS = re.compile(
+    r"\b(lahore|rawalpindi|faisalabad|multan|gujranwala|sialkot|bahawalpur|sargodha|sheikhupura|kasur|okara|"
+    r"sahiwal|pakpattan|vehari|khanewal|lodhran|bahawalnagar|rahim\s*yar\s*khan|dera\s*ghazi\s*khan|d\.?\s*g\.?\s*khan|"
+    r"rajanpur|muzaffargarh|layyah|bhakkar|mianwali|khushab|jhang|chiniot|toba\s*tek\s*singh|hafizabad|"
+    r"mandi\s*bahauddin|gujrat|jhelum|chakwal|attock|murree|narowal|nankana\s*sahib|wazirabad|taunsa|talagang|"
+    r"kot\s*addu)\b", re.I)
+# The ad's own page: "Expected Last Date: 10 November, 2026 or as per paper ad".
+_AD_LAST = re.compile(r"Expected\s+Last\s+Date\s*:?\s*" + _DATE, re.I)
+# Seconds between two ad pages, and ads read per check (each is read once per run of the app).
+ADS_PAUSE = 1.0
+ADS_MAX = 30
+# Ad address -> the last date its page gives (or None).
+_AD_PAGES = {}
+
+
+def read_jobz(html, base):
+    """The government internships on a jobz.pk listing that are in Punjab or
+    a federal body. A row gives the ad's title, employer, city, posting date
+    and positions; another province's ad (Quetta, Karachi) is left out."""
+    items = []
+    for row in re.split(r'<div\s+class="row_container"\s*>', html, flags=re.I)[1:]:
+        link = re.search(r'<a\s+href="([^"]+_jobs-\d+\.html)"[^>]*>(.*?)</a>', row, flags=re.S | re.I)
+        if not link:
+            continue
+        title = text_of(link.group(2))
+        employer = re.search(r'<div\s+class="cell2"\s*>(.*?)</div>', row, flags=re.S | re.I)
+        employer = text_of(employer.group(1)) if employer else ""
+        cells = [text_of(c) for c in re.findall(r'<div\s+class="inner_cell"\s*>(.*?)</div>', row, flags=re.S | re.I)]
+        city = cells[0] if cells else ""
+        posted = re.search(r"\d{1,2}-[A-Za-z]{3}-\d{4}", " ".join(cells[1:]))
+        positions = re.search(r"Vacant\s+Positions:(.*)", text_of(row), flags=re.S | re.I)
+        if not is_internship(" ".join([title, positions.group(1) if positions else ""])):
+            continue
+        named = f"{title} {employer}"
+        level = level_of(named, None)
+        if level is None and not OTHER_PROVINCES.search(named):
+            level = ("Punjab" if PUNJAB_DISTRICTS.search(city) else
+                     "Federal" if re.search(r"\bislamabad\b", city, re.I) else None)
+        if level is None:
+            continue
+        items.append({"kind": "post", "title": title, "url": urljoin(base, unescape(link.group(1))),
+                      "level": level, "detail": " · ".join(x for x in (employer, city) if x),
+                      "deadline": "", "posted": posted.group(0) if posted else None, "_read": True})
+    return items
+
+
+def ad_deadline(url, get, pages):
+    """The last date an ad's own page gives, or None. Raises if the page
+    cannot be fetched (it is tried again on the next check)."""
+    if url not in _AD_PAGES:
+        try:
+            page = get(url)
+        except Exception as exc:
+            pages.append({"url": url, "status": http_status(exc), "error": type(exc).__name__})
+            raise
+        pages.append({"url": url, "status": page.status})
+        text = text_of(strip_code(page.text))
+        match = _AD_LAST.search(text) or _DEADLINE.search(text)
+        if len(_AD_PAGES) > 3000:
+            _AD_PAGES.clear()
+        _AD_PAGES[url] = parse_date(match.group(1)) if match else None
+    return _AD_PAGES[url]
 
 
 # ---------------------------------------------------------------------------
@@ -527,7 +670,7 @@ def check(source, get=None):
                  [(url, outlet) for outlet, url in source.get("feeds", [])])
         found = []
         for n, (url, outlet) in enumerate(feeds):
-            if n and get is fetch and "bing.com" in url:
+            if n and live(get) and "bing.com" in url:
                 time.sleep(NEWS_PAUSE)
             try:
                 found.extend(read_feed(url, get, outlet))
@@ -549,6 +692,37 @@ def check(source, get=None):
                 items.append(item)
         return {"items": items, "lines": None, "error": None, "pages": pages}
 
+    if kind == "ads":
+        found = []
+        for url in source["urls"]:
+            try:
+                page = get(url)
+            except Exception as exc:  # noqa: BLE001
+                status = http_status(exc)
+                errors.append(f"{type(exc).__name__}: {str(exc)[:160]}")
+                pages.append({"url": url, "status": status, "error": errors[-1]})
+                continue
+            pages.append({"url": url, "status": page.status})
+            for item in read_jobz(page.text, url):
+                item["found_on"] = url
+                found.append(item)
+        if errors and len(errors) == len(source["urls"]):
+            return {"items": [], "lines": None, "error": errors[0], "pages": pages}
+        # The listing gives no last date: keep an ad only if its own page gives one still ahead.
+        read = 0
+        for item in _dedupe(found)[:ADS_MAX]:
+            if read and live(get) and item["url"] not in _AD_PAGES:
+                time.sleep(ADS_PAUSE)
+            read += item["url"] not in _AD_PAGES
+            try:
+                closes = ad_deadline(item["url"], get, pages)
+            except Exception:  # noqa: BLE001 -- recorded in `pages`; read again next check
+                continue
+            if closes and closes >= today():
+                item["deadline"] = closes.strftime("%d %b %Y")
+                items.append(item)
+        return {"items": items, "lines": None, "error": None, "pages": pages}
+
     for url in source["urls"]:
         try:
             page = get(url)
@@ -563,7 +737,7 @@ def check(source, get=None):
         elif kind == "njp":
             found = read_njp(page.text, url, filtered="scale=135" in url, jobs=source.get("jobs", False))
         elif kind == "links":
-            found = read_links(page.text, url)
+            found = read_links(page.text, url, source.get("words"))
         else:
             found = []
             lines = (lines or []) + page_lines(page.text)
